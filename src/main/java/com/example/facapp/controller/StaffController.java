@@ -84,4 +84,12 @@ public class StaffController {
         return result;
     }
 
+    @RequestMapping(value = "/remind")
+    public Map remind(int limit, int offset, String ids) {
+        Map result = new HashMap();
+        result.put("total", staffService.countRemind(ids));
+        result.put("rows", staffService.findAllByRemind(limit, offset, ids));
+        return result;
+    }
+
 }

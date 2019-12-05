@@ -32,7 +32,6 @@ public class StaffService {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    /*分页查询订单列表*/
     public List<StaffDto> findAllByPage(int limit, int offset, String seach){
         List<StaffModel> staffModels;
         Map param = new HashMap();
@@ -74,6 +73,70 @@ public class StaffService {
         return result;
     }
 
+    public List<Map<String, String>> findAllByRemind(int limit, int offset, String ids){
+        List<Map<String, String>> resultList = new ArrayList<>();
+        Map param = new HashMap();
+        param.put("limit", limit);
+        param.put("offset", offset);
+        if (ids.charAt(ids.length() - 1) == ',') {
+            ids = ids.substring(0, ids.length() - 1);
+        }
+        param.put("id", ids);
+        List<StaffModel> query = jdbcTemplate.query(ParameterBind.bind(SQL.REMIND_LIST, param), new BeanPropertyRowMapper<>(StaffModel.class));
+        for (StaffModel staffModel : query) {
+            Map<String, String> map = new HashMap<>();
+            map.put("id", staffModel.getId().toString());
+            map.put("name", staffModel.getName());
+
+            // 计算日期 入职日期 + 协议日期 - 当前日期
+            Date entryTime = new Date(staffModel.getEntrytime().getTime());
+            Calendar ca = Calendar.getInstance();
+            ca.setTime(entryTime);
+            ca.add(Calendar.YEAR, Integer.valueOf("".equals(staffModel.getContractlife()) ? "3" : staffModel.getContractlife()));
+
+            Calendar now = Calendar.getInstance();
+            now.setTime(new Date());
+
+            int year = ca.get(Calendar.YEAR) - now.get(Calendar.YEAR);
+            int month = ca.get(Calendar.MONTH) - now.get(Calendar.MONTH);
+            int day = ca.get(Calendar.DAY_OF_MONTH) - now.get(Calendar.DAY_OF_MONTH);
+            StringBuilder timeStr = new StringBuilder();
+            if (year < 0) {
+                timeStr.append("已到期");
+            } else if (year == 0) {
+                if (month < 0) {
+                    timeStr.append("已到期");
+                } else if (month == 0) {
+                    if (day < 0) {
+                        timeStr.append("已到期");
+                    } else if (day == 0) {
+                        timeStr.append("今日到期");
+                    } else {
+                        timeStr.append("还有").append(day).append("天");
+                    }
+                } else {
+                    timeStr.append("还有").append(month).append("月");
+                    if (day > 0) {
+                        timeStr.append(day).append("天");
+                    }
+                }
+            } else {
+                timeStr.append("还有").append(year).append("年");
+                if (month > 0) {
+                    timeStr.append(month).append("月");
+                }
+                if (day > 0) {
+                    timeStr.append(day).append("天");
+                }
+            }
+
+            map.put("time", timeStr.toString());
+            resultList.add(map);
+        }
+
+        return resultList;
+    }
+
     public static boolean isNumericZidai(String str) {
         for (int i = 0; i < str.length(); i++) {
             System.out.println(str.charAt(i));
@@ -98,6 +161,15 @@ public class StaffService {
         }else {
             return jdbcTemplate.queryForObject(ParameterBind.bind(SQL.FIND_ORDER_COUNT, param), Long.class);
         }
+    }
+
+    public Integer countRemind(String ids) {
+        List<Integer> idList = new ArrayList<>();
+        for (String idStr : ids.split(",")) {
+            if (StringUtils.isEmpty(idStr)) continue;
+            idList.add(Integer.valueOf(idStr));
+        }
+        return staffRepository.findByIdIn(idList).size();
     }
 
     public boolean delete(String ids){

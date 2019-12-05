@@ -12,6 +12,7 @@ public class SQL {
     public static final String FIND_ORDER_COUNT_BY_ID_NUM = "select count(*) from staff where Name=':Name' or Id=:Id or Idcard like '%:Idcard%'";
     public static final String DELETE_ORDER_BY_XHS = "DELETE FROM staff WHERE id in (:ids)";
     public static final String SHOW_ORDER_BY_XH = "select * from staff where id=:id";
+    public static final String REMIND_LIST = "select * from staff where id in (:id) LIMIT :offset,:limit";
 
     /*账户判断*/
     public static final String VALIDATE_ACCOUNT = "select count(*) from account where xh=:username and password=':password' and cjqx=':cjqx'";
