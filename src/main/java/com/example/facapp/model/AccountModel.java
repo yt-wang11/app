@@ -9,13 +9,13 @@ import java.sql.Timestamp;
 public class AccountModel implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long xh;//厂家编号
-    private String cjmc;//厂家名称
-    private String username;//客户名称
-    private String password;//厂家密码
-    private String cjqx;//厂家权限
-    private String wybz;//唯一标志
-    private String lxfs;//联系方式
+    private Long xh;
+    private String cjmc;
+    private String username;
+    private String password;
+    private String cjqx;
+    private String wybz;
+    private String lxfs;
 
     public Long getXh() {
         return xh;
