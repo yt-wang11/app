@@ -35,16 +35,19 @@ public class StaffService {
     /*分页查询订单列表*/
     public List<StaffDto> findAllByPage(int limit, int offset, String seach){
         List<StaffModel> staffModels;
+        Map param = new HashMap();
+        param.put("limit", limit);
+        param.put("offset", offset);
         if (!StringUtils.isEmpty(seach)) {
+            param.put("Id", seach);
+            param.put("Idcard", seach);
+            param.put("Name", seach);
             if (isNumericZidai(seach)) {
-                staffModels = staffRepository.findAllById(Integer.valueOf(seach));
+                staffModels = jdbcTemplate.query(ParameterBind.bind(SQL.FIND_ORDER_BY_SEARCH_NUM, param), new BeanPropertyRowMapper<>(StaffModel.class));
             } else {
-                staffModels = staffRepository.findByNameLike("%" + seach + "%");
+                staffModels = jdbcTemplate.query(ParameterBind.bind(SQL.FIND_ORDER_BY_SEARCH, param), new BeanPropertyRowMapper<>(StaffModel.class));
             }
         } else {
-            Map param = new HashMap();
-            param.put("limit", limit);
-            param.put("offset", offset);
             staffModels = jdbcTemplate.query(ParameterBind.bind(SQL.FIND_ORDER_BY_CJ, param), new BeanPropertyRowMapper<>(StaffModel.class));
         }
 
@@ -85,7 +88,13 @@ public class StaffService {
         Map param = new HashMap();
         if (!StringUtils.isEmpty(search)){
             param.put("Name", search);
-            return jdbcTemplate.queryForObject(ParameterBind.bind(SQL.FIND_ORDER_COUNT_BY_ID, param), Long.class);
+            param.put("Id", search);
+            param.put("Idcard", search);
+            if (isNumericZidai(search)) {
+                return jdbcTemplate.queryForObject(ParameterBind.bind(SQL.FIND_ORDER_COUNT_BY_ID_NUM, param), Long.class);
+            } else {
+                return jdbcTemplate.queryForObject(ParameterBind.bind(SQL.FIND_ORDER_COUNT_BY_ID, param), Long.class);
+            }
         }else {
             return jdbcTemplate.queryForObject(ParameterBind.bind(SQL.FIND_ORDER_COUNT, param), Long.class);
         }

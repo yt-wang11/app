@@ -16,4 +16,5 @@ public interface StaffRepository extends JpaRepository<StaffModel, Long> {
     List<StaffModel> findByNameLike(String name);
     List<StaffModel> findAllById(Integer id);
     List<StaffModel> findByIdIn(List<Integer> ids);
+    List<StaffModel> findByIdOrNameLikeOrIdcardLike(Integer id, String name, String idcard);
 }
