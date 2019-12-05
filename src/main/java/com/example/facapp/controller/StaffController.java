@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletResponse;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,14 +34,10 @@ public class StaffController {
     }
 
     @GetMapping(value = "/delete")
-    @SuppressWarnings("all")
     public String delete(String ids) {
         boolean result = false;
         try {
-            if (ids.lastIndexOf(",") == ids.length()-1){
-                ids = ids.substring(0, ids.length()-1);
-            }
-            result = orderService.delete(ids);
+            result = staffService.delete(ids);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -60,17 +57,6 @@ public class StaffController {
         return result;
     }
 
-    @PostMapping(value = "/update")
-    public String update(Long xh, Long cjbh, Long khbh, String ddh, String bzjb, String ddsj) {
-        String result = "error";
-        try {
-            if (orderService.update(xh, cjbh, khbh, ddh, bzjb, Timestamp.valueOf(ddsj + " 00:00:00"))) result = "success";
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        return result;
-    }
-
     @PostMapping(value = "/show")
     public Map show(Integer id) {
         Map result = new HashMap();
@@ -80,6 +66,15 @@ public class StaffController {
             e.printStackTrace();
         }
         return result;
+    }
+
+    @GetMapping(value = "/export")
+    public void export(String ids, HttpServletResponse response) {
+        try {
+            staffService.export(ids, response);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
     @PostMapping(value = "/exist")

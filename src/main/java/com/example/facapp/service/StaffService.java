@@ -10,12 +10,17 @@ import com.example.facapp.repository.ClientRepository;
 import com.example.facapp.repository.FlowRepository;
 import com.example.facapp.repository.OrderRepository;
 import com.example.facapp.repository.StaffRepository;
+import org.apache.poi.hssf.usermodel.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.sql.Timestamp;
 import java.util.*;
 
@@ -31,19 +36,9 @@ public class StaffService {
     private StaffRepository staffRepository;
 
     @Autowired
-    private OrderRepository orderRepository;
-
-    @Autowired
-    private ClientRepository clientRepository;
-
-    @Autowired
-    private FlowRepository flowRepository;
-
-    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     /*分页查询订单列表*/
-    @SuppressWarnings("all")
     public List<StaffDto> findAllByPage(int limit, int offset, String seach){
         List<StaffModel> staffModels;
         if (!StringUtils.isEmpty(seach)) {
@@ -92,28 +87,6 @@ public class StaffService {
         return true;
     }
 
-
-    /*查询某客户所有订单*/
-    @SuppressWarnings("all")
-    public List<OrderListModel> findAllByClient(Long cjbh, Long khbh){
-        Map param = new HashMap();
-        param.put("cjbh", cjbh);
-        param.put("khbh", khbh);
-        List<OrderModel> orderModels = jdbcTemplate.query(ParameterBind.bind(SQL.FIND_ORDER_BY_CJ_AND_KHBH, param), new BeanPropertyRowMapper<>(OrderModel.class));
-        List<OrderListModel> result = new ArrayList<>();
-        orderModels.forEach(t -> {
-            OrderListModel listModel = new OrderListModel();
-            listModel.setXh(t.getXh());
-            listModel.setCustomerName(clientRepository.findFirstByXh(t.getKhbh()).getKhmc());
-            listModel.setFlowName(flowRepository.findFirstByCjbhAndBzjb(t.getCjbh(), t.getBzjb()).getBzmc());
-            listModel.setOrderId(t.getDdh());
-            listModel.setOrderTime(t.getDdsj().toString().substring(0, 10));
-            result.add(listModel);
-        });
-
-        return result;
-    }
-
     public Long count(String search){
         Map param = new HashMap();
         if (!StringUtils.isEmpty(search)){
@@ -124,20 +97,16 @@ public class StaffService {
         }
     }
 
-    public boolean delete(String xhs){
+    public boolean delete(String ids){
+        if (ids.lastIndexOf(",") == ids.length()-1){
+            ids = ids.substring(0, ids.length()-1);
+        }
         Map param = new HashMap();
-        param.put("xhs", xhs);
+        param.put("ids", ids);
         int update = jdbcTemplate.update(ParameterBind.bind(SQL.DELETE_ORDER_BY_XHS, param));
         return update!=0;
     }
 
-    public void deleteByKhbh(String khbh){
-        Map param = new HashMap();
-        param.put("khbh", khbh);
-        jdbcTemplate.update(ParameterBind.bind(SQL.DELETE_ORDER_BY_KHBH, param));
-    }
-
-    @SuppressWarnings("all")
     public boolean insert(StaffDto staffDto){
         StaffModel staffModel = new StaffModel();
         staffModel.setId(staffDto.getId());
@@ -153,29 +122,9 @@ public class StaffService {
         staffModel.setWorkchangerecord(staffDto.getWorkchangerecord());
         staffModel.setRewardsandpunishmentrecords(staffDto.getRewardsandpunishmentrecords());
         staffModel.setRankevaluationrecord(staffDto.getRankevaluationrecord());
-        StaffModel model = staffRepository.saveAndFlush(staffModel);
+        staffRepository.saveAndFlush(staffModel);
 
-        return Objects.nonNull(model);
-    }
-
-    @SuppressWarnings("all")
-    public boolean update(Long xh, Long cjbh, Long khbh, String ddh, String bzjb, Timestamp ddsj){
-        OrderModel one = orderRepository.findFirstByXh(xh);
-        one.setCjbh(cjbh);
-        one.setKhbh(khbh);
-        one.setDdh(ddh);
-        one.setBzjb(bzjb);
-        one.setDdsj(ddsj);
-        OrderModel save = orderRepository.save(one);
-        /*int update = jdbcTemplate.update(SQL.UPDATE_ORDER, t ->{
-            t.setLong(1, cjbh);
-            t.setLong(2, khbh);
-            t.setString(3, ddh);
-            t.setString(4, bzjb);
-            t.setTimestamp(5, ddsj);
-            t.setLong(6, xh);
-        });*/
-        return Objects.nonNull(save);
+        return true;
     }
 
     public Map<String, Object> show(Integer id){
@@ -184,18 +133,136 @@ public class StaffService {
         return jdbcTemplate.queryForMap(ParameterBind.bind(SQL.SHOW_ORDER_BY_XH, param));
     }
 
-    public boolean exist(Long ddh, Long cjbh){
-        Map param = new HashMap();
-        param.put("ddh", ddh);
-        param.put("cjbh", cjbh);
-        Long count = jdbcTemplate.queryForObject(ParameterBind.bind(SQL.EXIST_BY_ID_AND_CJBH, param), Long.class);
-        return count > 0;
-    }
+    public void export(String ids, HttpServletResponse response){
+        // 生成提示信息，
+        List<Integer> idList = new ArrayList<>();
+        for (String idStr : ids.split(",")) {
+            if (StringUtils.isEmpty(idStr)) continue;
+            idList.add(Integer.valueOf(idStr));
+        }
+        response.setContentType("application/vnd.ms-excel");
+        String codedFileName = null;
+        OutputStream fOut = null;
+        try
+        {
+            // 进行转码，使其支持中文文件名
+            codedFileName = java.net.URLEncoder.encode("员工信息", "UTF-8");
+            response.setHeader("content-disposition", "attachment;filename*=utf-8'zh_cn'" + codedFileName + ".xls");
+            // 产生工作簿对象
+            HSSFWorkbook workbook = new HSSFWorkbook();
+            //产生工作表对象
+            HSSFSheet sheet = workbook.createSheet();
+            //设置表格默认列宽度为15个字节
+            sheet.setDefaultColumnWidth(15);
+            //设置自动换行
+            sheet.setFitToPage(true);
+            // 设置标题
+            HSSFCellStyle titleStyle = workbook.createCellStyle();
+            // 居中显示
+            titleStyle.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+            // 标题字体
+            HSSFFont titleFont = workbook.createFont();
+            // 字体大小
+            titleFont.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+            titleStyle.setFont(titleFont);
+            HSSFCellStyle contentStyle = workbook.createCellStyle();
+            contentStyle.setAlignment(HSSFCellStyle.ALIGN_LEFT);
+            HSSFFont contentFont = workbook.createFont();
+            contentFont.setBoldweight(HSSFFont.BOLDWEIGHT_NORMAL);
+            contentStyle.setFont(contentFont);
+            // 产生表格标题行
+            HSSFRow row = sheet.createRow(0);
+            String[] headers = new String[] { "员工号", "姓名", "年龄", "性别", "工作部门",
+                    "身份证", "学历", "职称",  "入职时间", "合同年限", "工作变动", "奖惩记录", "职级评定记录"};
+            for (int i = 0; i < headers.length; i++) {
+                HSSFCell cell = row.createCell(i);
+                HSSFRichTextString text = new HSSFRichTextString(headers[i]);
+                cell.setCellValue(text);
+                cell.setCellStyle(titleStyle);
+            }
+            //生成数据
+            List<StaffModel> list = staffRepository.findByIdIn(idList);
+            int rowCount = 1;
+            if (!Objects.isNull(list) && !list.isEmpty() ) {
+                for (int i = 0; i < list.size(); i++, rowCount++) {
+                    HSSFRow dataRow = sheet.createRow(rowCount);
+                    StaffModel model = list.get(i);
+                    // 员工号
+                    HSSFCell cell0 = dataRow.createCell(0);
+                    cell0.setCellValue(model.getId());
+                    cell0.setCellStyle(contentStyle);
 
-    public Map getOne(String ddh, String cjbh){
-        Map param = new HashMap();
-        param.put("ddh", ddh);
-        param.put("cjbh", cjbh);
-        return jdbcTemplate.queryForMap(ParameterBind.bind(SQL.FIND_ORDER_BY_ID, param));
+                    // 姓名
+                    HSSFCell cell1 = dataRow.createCell(1);
+                    cell1.setCellValue(Objects.isNull(model.getName()) ? "" : model.getName());
+                    cell1.setCellStyle(contentStyle);
+
+                    // 年龄
+                    HSSFCell cell2 = dataRow.createCell(2);
+                    cell2.setCellValue(Objects.isNull(model.getAge()) ? "" : model.getAge().toString());
+                    cell2.setCellStyle(contentStyle);
+                    cell2.setAsActiveCell();
+
+                    // 性别
+                    HSSFCell cell3 = dataRow.createCell(3);
+                    cell3.setCellValue(Objects.isNull(model.getSex()) ? "" : model.getSex());
+                    cell3.setCellStyle(contentStyle);
+                    cell3.setAsActiveCell();
+
+                    // 工作部门
+                    HSSFCell cell4 = dataRow.createCell(4);
+                    cell4.setCellValue(Objects.isNull(model.getWorkdepartment()) ? "" : model.getWorkdepartment());
+                    cell4.setCellStyle(contentStyle);
+
+                    // "身份证", "学历", "职称",  "入职时间", "合同年限", "工作变动", "奖惩记录", "职级评定记录"
+                    HSSFCell cell5 = dataRow.createCell(5);
+                    cell5.setCellValue(Objects.isNull(model.getIdcard()) ? "" : model.getIdcard());
+                    cell5.setCellStyle(contentStyle);
+
+                    HSSFCell cell6 = dataRow.createCell(6);
+                    cell6.setCellValue(Objects.isNull(model.getEducation()) ? "" : model.getEducation());
+                    cell6.setCellStyle(contentStyle);
+
+                    HSSFCell cell7 = dataRow.createCell(7);
+                    cell7.setCellValue(Objects.isNull(model.getTitle()) ? "" : model.getTitle());
+                    cell7.setCellStyle(contentStyle);
+
+                    HSSFCell cell8 = dataRow.createCell(8);
+                    cell8.setCellValue(Objects.isNull(model.getEntrytime()) ? "" : model.getEntrytime().toString()
+                            .substring(0, model.getEntrytime().toString().indexOf(".")));
+                    cell8.setCellStyle(contentStyle);
+
+                    HSSFCell cell9 = dataRow.createCell(9);
+                    cell9.setCellValue(Objects.isNull(model.getContractlife()) ? "" : model.getContractlife());
+                    cell9.setCellStyle(contentStyle);
+
+                    HSSFCell cell10 = dataRow.createCell(10);
+                    cell10.setCellValue(Objects.isNull(model.getWorkchangerecord()) ? "" : model.getWorkchangerecord());
+                    cell10.setCellStyle(contentStyle);
+
+                    HSSFCell cell11 = dataRow.createCell(11);
+                    cell11.setCellValue(Objects.isNull(model.getRewardsandpunishmentrecords()) ? "" : model.getRewardsandpunishmentrecords());
+                    cell11.setCellStyle(contentStyle);
+
+                    HSSFCell cell12 = dataRow.createCell(12);
+                    cell12.setCellValue(Objects.isNull(model.getRankevaluationrecord()) ? "" : model.getRankevaluationrecord());
+                    cell12.setCellStyle(contentStyle);
+
+                }
+            }
+            fOut = response.getOutputStream();
+            workbook.write(fOut);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                assert fOut != null;
+                fOut.flush();
+                fOut.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 }
