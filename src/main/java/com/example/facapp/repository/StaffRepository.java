@@ -1,6 +1,5 @@
 package com.example.facapp.repository;
 
-import com.example.facapp.model.ClientModel;
 import com.example.facapp.model.StaffModel;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

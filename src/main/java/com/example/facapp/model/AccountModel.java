@@ -4,11 +4,6 @@ import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
 
-/**
- * @author 姜涛
- * @create 2018-04-14 12:55
- * @desc 我们的客户列表
- **/
 @Entity
 @Table(name = "account")
 public class AccountModel implements Serializable {

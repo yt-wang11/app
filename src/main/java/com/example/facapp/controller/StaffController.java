@@ -1,7 +1,6 @@
 package com.example.facapp.controller;
 
 import com.example.facapp.dto.StaffDto;
-import com.example.facapp.service.OrderService;
 import com.example.facapp.service.StaffService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletResponse;
-import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,9 +16,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/staff")
 public class StaffController {
-
-    @Autowired
-    private OrderService orderService;
 
     @Autowired
     private StaffService staffService;
@@ -82,7 +77,7 @@ public class StaffController {
         Map result = new HashMap();
         result.put("valid", true);
         try {
-            if (orderService.exist(ddh, cjbh)) result.put("valid", false);
+            // 待写代码
         }catch (Exception e){
             e.printStackTrace();
         }

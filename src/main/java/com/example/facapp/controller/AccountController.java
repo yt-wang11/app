@@ -1,22 +1,14 @@
 package com.example.facapp.controller;
 
 import com.example.facapp.service.AccountService;
-import com.example.facapp.service.ClientService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-/**
- * @author 姜涛
- * @create 2018-04-17 13:42
- * @desc 账户控制层
- **/
 @RestController
 @RequestMapping("/account")
 public class AccountController {
